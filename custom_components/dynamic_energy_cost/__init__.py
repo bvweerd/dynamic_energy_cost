@@ -1,40 +1,110 @@
-"""Home Assistant support for Dynamic Energy Costs."""
+"""
+Custom integration to integrate Dynamic Energy Cost with Home Assistant.
 
+For more details about this integration, please refer to
+https://github.com/bvweerd/dynamic_energy_cost
+"""
+import asyncio
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.core import Config
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
-_LOGGER = logging.getLogger(__name__)
+from .api import DynamicEnergyCostApiClient
+from .const import CONF_PASSWORD
+from .const import CONF_USERNAME
+from .const import DOMAIN
+from .const import PLATFORMS
+from .const import STARTUP_MESSAGE
 
-PLATFORMS = [Platform.SENSOR]
+SCAN_INTERVAL = timedelta(seconds=30)
+
+_LOGGER: logging.Logger = logging.getLogger(__package__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up Dynamic Energy Cost from a config entry."""
-    _LOGGER.info(
-        "Starting setup of Dynamic Energy Cost component, entry.data: %s", entry.data
-    )
-
-    try:
-        _LOGGER.debug(
-            "Attempting to forward Dynamic Energy Cost entry setup to the sensor platform"
-        )
-        setup_result = await hass.config_entries.async_forward_entry_setups(
-            entry, PLATFORMS
-        )
-        _LOGGER.debug("Forwarding to sensor setup was successful: %s", setup_result)
-    except Exception as e:  # noqa: BLE001
-        _LOGGER.error("Failed to set up sensor platform, error: %s", str(e))
-        return False
-
-    _LOGGER.info("Dynamic Energy Cost setup completed successfully")
+async def async_setup(hass: HomeAssistant, config: Config):
+    """Set up this integration using YAML is not supported."""
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload a Dynamic Energy Cost config entry."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up this integration using UI."""
+    if hass.data.get(DOMAIN) is None:
+        hass.data.setdefault(DOMAIN, {})
+        _LOGGER.info(STARTUP_MESSAGE)
 
-    _LOGGER.debug("Attempting to unload the Dynamic Energy Cost component")
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    username = entry.data.get(CONF_USERNAME)
+    password = entry.data.get(CONF_PASSWORD)
+
+    session = async_get_clientsession(hass)
+    client = DynamicEnergyCostApiClient(username, password, session)
+
+    coordinator = DynamicEnergyCostDataUpdateCoordinator(hass, client=client)
+    await coordinator.async_refresh()
+
+    if not coordinator.last_update_success:
+        raise ConfigEntryNotReady
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    for platform in PLATFORMS:
+        if entry.options.get(platform, True):
+            coordinator.platforms.append(platform)
+            hass.async_add_job(
+                hass.config_entries.async_forward_entry_setup(entry, platform)
+            )
+
+    entry.add_update_listener(async_reload_entry)
+    return True
+
+
+class DynamicEnergyCostDataUpdateCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching data from the API."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        client: DynamicEnergyCostApiClient,
+    ) -> None:
+        """Initialize."""
+        self.api = client
+        self.platforms = []
+
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+
+    async def _async_update_data(self):
+        """Update data via library."""
+        try:
+            return await self.api.async_get_data()
+        except Exception as exception:
+            raise UpdateFailed() from exception
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Handle removal of an entry."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    unloaded = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, platform)
+                for platform in PLATFORMS
+                if platform in coordinator.platforms
+            ]
+        )
+    )
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unloaded
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)

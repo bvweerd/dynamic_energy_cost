@@ -1,98 +1,96 @@
-# Dynamic Energy Cost Integration for Home Assistant
+# Dynamic Energy Cost
 
-This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from Nord Pool.
+[![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![License][license-shield]](LICENSE)
 
-## Features
+[![pre-commit][pre-commit-shield]][pre-commit]
+[![Black][black-shield]][black]
 
-- **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
-- **Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
-- **Sensor without reset interval (Energy and Power Based)** Similar to the above, but does not reset automatically. It resets only when the service `dynamic_energy_cost.reset_cost` is called. Making it perfect for calculating specific costs, such as the expenses for individual charging sessions of an electric car.
-- **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
+[![hacs][hacsbadge]][hacs]
+[![Project Maintenance][maintenance-shield]][user_profile]
+[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
-## Best Practices
+[![Discord][discord-shield]][discord]
+[![Community Forum][forum-shield]][forum]
 
-Calculating energy cost from an energy (kWh) sensor is the more precise and recommended method. If an energy sensor is available, it is advisable to use this option for accuracy comparable to the Home Assistant Energy Dashboard. If no kWh sensor is available, the integration can alternatively use a power (W) sensor.
+**TO BE REMOVED: If you need help, as a developer, to use this custom component tempalte,
+please look at the [User Guide in the Cookiecutter documentation](https://cookiecutter-homeassistant-custom-component.readthedocs.io/en/stable/quickstart.html)**
 
-**Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
+**This component will set up the following platforms.**
 
-## Resetting the cost sensors
+| Platform        | Description                                                               |
+| --------------- | ------------------------------------------------------------------------- |
+| `binary_sensor` | Show something `True` or `False`.                                         |
+| `sensor`        | Show info from Dynamic Energy Cost API. |
+| `switch`        | Switch something `True` or `False`.                                       |
 
-Dynamic Energy Cost provides a service `dynamic_energy_cost.reset_cost` which you can call to reset energy sensors to 0. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
-
-```yaml
-service: dynamic_energy_cost.reset_cost
-target:
-  entity_id: sensor.your_sensor_entity_id
-```
-
-## Prerequisites
-
-- **Electricity Price Sensor:** A sensor that provides the current electricity price in EUR/kWh.
-- **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
-- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
+![example][exampleimg]
 
 ## Installation
 
-### Install using HACS (recommended)
-If you do not have HACS installed yet visit https://hacs.xyz for installation instructions.
+1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
+2. If you do not have a `custom_components` directory (folder) there, you need to create it.
+3. In the `custom_components` directory (folder) create a new folder called `dynamic_energy_cost`.
+4. Download _all_ the files from the `custom_components/dynamic_energy_cost/` directory (folder) in this repository.
+5. Place the files you downloaded in the new directory (folder) you created.
+6. Restart Home Assistant
+7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Dynamic Energy Cost"
 
-To add the this repository to HACS in your Home Assistant instance, use this My button:
+Using your HA configuration directory (folder) as a starting point you should now also have this:
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=dynamic_energy_cost&owner=martinarva&category=Integration)
+```text
+custom_components/dynamic_energy_cost/translations/en.json
+custom_components/dynamic_energy_cost/translations/fr.json
+custom_components/dynamic_energy_cost/translations/nb.json
+custom_components/dynamic_energy_cost/translations/sensor.en.json
+custom_components/dynamic_energy_cost/translations/sensor.fr.json
+custom_components/dynamic_energy_cost/translations/sensor.nb.json
+custom_components/dynamic_energy_cost/translations/sensor.nb.json
+custom_components/dynamic_energy_cost/__init__.py
+custom_components/dynamic_energy_cost/api.py
+custom_components/dynamic_energy_cost/binary_sensor.py
+custom_components/dynamic_energy_cost/config_flow.py
+custom_components/dynamic_energy_cost/const.py
+custom_components/dynamic_energy_cost/manifest.json
+custom_components/dynamic_energy_cost/sensor.py
+custom_components/dynamic_energy_cost/switch.py
+```
 
-After installation, please restart Home Assistant. To add Dynamic Energy Cost to your Home Assistant instance, use this My button:
+## Configuration is done in the UI
 
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=dynamic_energy_cost)
+<!---->
 
-<details>
-<summary><b><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m13.75 10.19l.63.13l4.17 2.08c.7.23 1.16.92 1.1 1.66v.26l-.9 6.12c-.06.43-.25.83-.6 1.11c-.31.3-.72.45-1.15.45h-6.88c-.49 0-.94-.18-1.27-.53L2.86 15.5l.9-1c.24-.25.62-.39.98-.37h.29L9 15V4.5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5.69z"></path></svg> Manual configuration steps</b></summary>
+## Contributions are welcome!
 
-### Semi-Manual Installation with HACS
+If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
 
-1. Go HACS integrations section.
-2. Click on the 3 dots in the top right corner.
-3. Select "Custom repositories"
-4. Add the URL (https://github.com/martinarva/dynamic_energy_cost) to the repository.
-5. Select the integration category.
-6. Click the "ADD" button.
-7. Now you are able to download the integration
+## Credits
 
-### Manual Installation
+This project was generated from [@oncleben31](https://github.com/oncleben31)'s [Home Assistant Custom Component Cookiecutter](https://github.com/oncleben31/cookiecutter-homeassistant-custom-component) template.
 
-1. Access the GitHub repository for this integration.
-2. Download the ZIP file of the repository and extract its contents.
-3. Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
+Code template was mainly taken from [@Ludeeus](https://github.com/ludeeus)'s [integration_blueprint][integration_blueprint] template
 
-### Restart Home Assistant
+---
 
-- Restart Home Assistant to recognize the newly added custom component.
-
-### Add Integration
-
-1. Navigate to Settings > Devices & Services.
-2. Click Add Integration and search for "Dynamic Energy Cost".
-3. Select the Dynamic Energy Cost integration to initiate setup.
-
-</details>
-
-## Configure Sensors
-
-When setting up the integration, you will be prompted to provide the following:
-
-- Input the entity IDs
-  - **Electricity Price Sensor:** Sensor that provides the current electricity price.
-  - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy.
-- Submit to complete the integration setup.
-
-## Updating
-
-To update the integration to a newer version:
-
-1. Access the GitHub repository for this integration.
-2. Download the latest ZIP file of the repository and extract its contents.
-3. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
-
-## Support
-
-For support, additional instructions, or to report issues, please visit the GitHub issues page associated with this repository.
-Home Assitant Community  topic: https://community.home-assistant.io/t/dynamic-energy-cost/726931
+[integration_blueprint]: https://github.com/custom-components/integration_blueprint
+[black]: https://github.com/psf/black
+[black-shield]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
+[buymecoffee]: https://www.buymeacoffee.com/bvweerd
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
+[commits-shield]: https://img.shields.io/github/commit-activity/y/bvweerd/dynamic_energy_cost.svg?style=for-the-badge
+[commits]: https://github.com/bvweerd/dynamic_energy_cost/commits/main
+[hacs]: https://hacs.xyz
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[discord]: https://discord.gg/Qa5fW2R
+[discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
+[exampleimg]: example.png
+[forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
+[forum]: https://community.home-assistant.io/
+[license-shield]: https://img.shields.io/github/license/bvweerd/dynamic_energy_cost.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-%40bvweerd-blue.svg?style=for-the-badge
+[pre-commit]: https://github.com/pre-commit/pre-commit
+[pre-commit-shield]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/bvweerd/dynamic_energy_cost.svg?style=for-the-badge
+[releases]: https://github.com/bvweerd/dynamic_energy_cost/releases
+[user_profile]: https://github.com/bvweerd
