@@ -6,7 +6,7 @@ DOMAIN_DATA = f"{DOMAIN}_data"
 VERSION = "0.0.0"
 
 ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
-ISSUE_URL = "https://github.com/bvweerd/dynamic_energy_cost/issues"
+ISSUE_URL = "https://github.com/martinarva/dynamic_energy_cost/issues"
 
 # Icons
 ICON = "mdi:format-quote-close"
@@ -15,16 +15,22 @@ ICON = "mdi:format-quote-close"
 BINARY_SENSOR_DEVICE_CLASS = "connectivity"
 
 # Platforms
-BINARY_SENSOR = "binary_sensor"
 SENSOR = "sensor"
-SWITCH = "switch"
-PLATFORMS = [BINARY_SENSOR, SENSOR, SWITCH]
+PLATFORMS = [SENSOR]
 
 
 # Configuration and options
-CONF_ENABLED = "enabled"
-CONF_USERNAME = "username"
-CONF_PASSWORD = "password"
+ELECTRICITY_PRICE_SENSOR = "electricity_price_sensor"
+POWER_SENSOR = "power_sensor"
+ENERGY_SENSOR = "energy_sensor"
+SERVICE_RESET_COST = "reset_cost"
+
+HOURLY = "hourly"
+DAILY = "daily"
+WEEKLY = "weekly"
+MONTHLY = "monthly"
+YEARLY = "yearly"
+MANUAL = "manual"
 
 # Defaults
 DEFAULT_NAME = DOMAIN

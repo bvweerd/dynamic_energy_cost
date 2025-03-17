@@ -21,56 +21,94 @@ class DynamicEnergyCostFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize."""
         self._errors = {}
 
+    # copied from original START
     async def async_step_user(self, user_input=None):
-        """Handle a flow initialized by the user."""
-        self._errors = {}
-
-        # Uncomment the next 2 lines if only a single instance of the integration is allowed:
-        # if self._async_current_entries():
-        #     return self.async_abort(reason="single_instance_allowed")
+        """Handle the initial step."""
+        _LOGGER.debug("Initiating config flow for user")
+        errors = {}
 
         if user_input is not None:
-            valid = await self._test_credentials(
-                user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
-            )
-            if valid:
+            _LOGGER.info("Received user input: %s", user_input)
+            try:
+                # Validate the electricity price sensor
+                cv.entity_id(user_input["electricity_price_sensor"])
+                if user_input.get("power_sensor"):
+                    cv.entity_id(user_input["power_sensor"])
+                if user_input.get("energy_sensor"):
+                    cv.entity_id(user_input["energy_sensor"])
+
+                # Check that either power sensor or energy sensor is filled
+                if not user_input.get("power_sensor") and not user_input.get(
+                    "energy_sensor"
+                ):
+                    _LOGGER.warning("Neither power nor energy sensor was provided")
+                    raise ConfigValidationError(
+                        "Please enter either a power sensor or an energy sensor, not both."
+                    )
+                if user_input.get("power_sensor") and user_input.get("energy_sensor"):
+                    _LOGGER.warning("Both power and energy sensors were provided")
+                    raise ConfigValidationError(
+                        "Please enter only one type of sensor (power or energy)."
+                    )
+
+                # Create the config dictionary
+                config = {
+                    "electricity_price_sensor": user_input["electricity_price_sensor"],
+                    "power_sensor": user_input.get("power_sensor"),
+                    "energy_sensor": user_input.get("energy_sensor"),
+                    "integration_description": user_input.get(
+                        "integration_description", "Unnamed"
+                    ),
+                }
+                _LOGGER.info("Config entry created successfully")
                 return self.async_create_entry(
-                    title=user_input[CONF_USERNAME], data=user_input
+                    title=f"Dynamic Energy Cost - {user_input.get('integration_description', 'Unnamed')}",
+                    data=config,
                 )
-            else:
-                self._errors["base"] = "auth"
+            except vol.Invalid as err:
+                _LOGGER.error("Validation error: %s", err)
+                errors["base"] = "invalid_entity"
 
-            return await self._show_config_form(user_input)
+        schema = vol.Schema(
+            {
+                vol.Optional("integration_description"): selector.TextSelector(),
+                vol.Required("electricity_price_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                ),
+                vol.Optional("power_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="power"
+                    )
+                ),
+                vol.Optional("energy_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="energy"
+                    )
+                ),
+            }
+        )
 
-        return await self._show_config_form(user_input)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "integration_description": "Name to append the integration title",
+                "electricity_price_sensor": "Electricity Price Sensor",
+                "power_sensor": "Power Usage Sensor",
+                "energy_sensor": "Energy (kWh) Sensor",
+            },
+        )
+
+    # Change existing config added !!
+    # copied from original END
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
         return DynamicEnergyCostOptionsFlowHandler(config_entry)
 
-    async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
-        """Show the configuration form to edit location data."""
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_USERNAME): str, vol.Required(CONF_PASSWORD): str}
-            ),
-            errors=self._errors,
-        )
-
-    async def _test_credentials(self, username, password):
-        """Return true if credentials is valid."""
-        try:
-            session = async_create_clientsession(self.hass)
-            client = DynamicEnergyCostApiClient(username, password, session)
-            await client.async_get_data()
-            return True
-        except Exception:  # pylint: disable=broad-except
-            pass
-        return False
-
-
+# copied from original START
 class DynamicEnergyCostOptionsFlowHandler(config_entries.OptionsFlow):
     """Config flow options handler for dynamic_energy_cost."""
 
@@ -84,23 +122,39 @@ class DynamicEnergyCostOptionsFlowHandler(config_entries.OptionsFlow):
         return await self.async_step_user()
 
     async def async_step_user(self, user_input=None):
-        """Handle a flow initialized by the user."""
-        if user_input is not None:
-            self.options.update(user_input)
-            return await self._update_options()
+        """Handle the initial step."""
+        errors = {}
+
+        # Get the current values from the config entry
+        current_values = self.config_entry.data
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "electricity_price_sensor",
+                    default=current_values.get("electricity_price_sensor"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                ),
+                vol.Optional(
+                    "power_sensor", default=current_values.get("power_sensor")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="power"
+                    )
+                ),
+                vol.Optional(
+                    "energy_sensor", default=current_values.get("energy_sensor")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="energy"
+                    )
+                ),
+            }
+        )
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(x, default=self.options.get(x, True)): bool
-                    for x in sorted(PLATFORMS)
-                }
-            ),
-        )
-
-    async def _update_options(self):
-        """Update config entry options."""
-        return self.async_create_entry(
-            title=self.config_entry.data.get(CONF_USERNAME), data=self.options
-        )
+            data_schema=schema,
+            errors=errors,
+# copied from original END

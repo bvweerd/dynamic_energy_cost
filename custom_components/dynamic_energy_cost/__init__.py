@@ -2,7 +2,7 @@
 Custom integration to integrate Dynamic Energy Cost with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/bvweerd/dynamic_energy_cost
+https://github.com/martinarva/dynamic_energy_cost
 """
 import asyncio
 import logging
@@ -16,9 +16,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .api import DynamicEnergyCostApiClient
-from .const import CONF_PASSWORD
-from .const import CONF_USERNAME
 from .const import DOMAIN
 from .const import PLATFORMS
 from .const import STARTUP_MESSAGE
@@ -38,52 +35,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
         _LOGGER.info(STARTUP_MESSAGE)
+    
+    # copied from original START
+    try:
+        _LOGGER.debug(
+            "Attempting to forward Dynamic Energy Cost entry setup to the sensor platform"
+        )
+        setup_result = await hass.config_entries.async_forward_entry_setups(
+            entry, PLATFORMS
+        )
+        _LOGGER.debug("Forwarding to sensor setup was successful: %s", setup_result)
+    except Exception as e:  # noqa: BLE001
+        _LOGGER.error("Failed to set up sensor platform, error: %s", str(e))
+        return False
 
-    username = entry.data.get(CONF_USERNAME)
-    password = entry.data.get(CONF_PASSWORD)
+    _LOGGER.info("Dynamic Energy Cost setup completed successfully")
+    # copied from original END
 
-    session = async_get_clientsession(hass)
-    client = DynamicEnergyCostApiClient(username, password, session)
-
-    coordinator = DynamicEnergyCostDataUpdateCoordinator(hass, client=client)
-    await coordinator.async_refresh()
-
-    if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
-
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
-    for platform in PLATFORMS:
-        if entry.options.get(platform, True):
-            coordinator.platforms.append(platform)
-            hass.async_add_job(
-                hass.config_entries.async_forward_entry_setup(entry, platform)
-            )
-
-    entry.add_update_listener(async_reload_entry)
     return True
-
-
-class DynamicEnergyCostDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching data from the API."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        client: DynamicEnergyCostApiClient,
-    ) -> None:
-        """Initialize."""
-        self.api = client
-        self.platforms = []
-
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
-
-    async def _async_update_data(self):
-        """Update data via library."""
-        try:
-            return await self.api.async_get_data()
-        except Exception as exception:
-            raise UpdateFailed() from exception
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
